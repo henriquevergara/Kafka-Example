@@ -1,15 +1,17 @@
 package com.vergara.henrique.kafka;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
 public class ProducerDemo {
 
     public static void main(String[] args) {
+
+        final Logger logger = LoggerFactory.getLogger(ProducerDemoWithCallBack.class);
 
         String bootstrapServers = "127.0.0.1:9092";
 
@@ -22,18 +24,36 @@ public class ProducerDemo {
         //create the producer
         KafkaProducer<String,String> producer = new KafkaProducer<String, String>(properties);
 
-        //create a producer record
-        ProducerRecord<String, String> record = new ProducerRecord<String, String>("first_topic", "hello world");
+
+        for (int i = 0; i < 10; i++) {
+
+            //create a producer record
+            final ProducerRecord<String, String> record = new ProducerRecord<String, String>("first_topic",  "Mensagem " +  Integer.toString(i) + ".");
+
+            //send data - asynchronous
+            producer.send(record, new Callback() {
+                public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                    // executes every time a record is successfully sent or an exception is thrown
+                    if (e == null) {
+
+                        logger.info("\n" + "Received new metadata: \n" +
+                                "Topic:" + recordMetadata.topic() + "\n" +
+                                "Partition:" + recordMetadata.partition() + "\n" +
+                                "Offset:" + recordMetadata.offset() + "\n" +
+                                "TimeStamp:" + recordMetadata.timestamp());
+                    } else {
+                        logger.error("Error while producing", e);
+                    }
+                }
+            });
 
 
-        //send data - asynchronous
-        producer.send(record);
+        }
 
         //flush data
         producer.flush();
 
         //flush and close producer
         producer.close();
-
     }
 }
